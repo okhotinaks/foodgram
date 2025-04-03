@@ -14,7 +14,7 @@ services:
       - pg_data:/var/lib/postgresql/data
   backend:
     container_name: foodgram-back
-    build: ../backend/
+    image: okhotinaks/foodgram_backend
     env_file: ../.env
     volumes:
       - ../data:/app/data
@@ -24,13 +24,13 @@ services:
       - db
   frontend:
     container_name: foodgram-front
-    build: ../frontend
+    image: okhotinaks/foodgram_frontend
     command: cp -r /app/build/. /frontend_static/
     volumes:
       - static:/frontend_static
   nginx:
     container_name: foodgram-proxy
-    build: .
+    image: okhotinaks/foodgram_gateway
     env_file: ../.env
     ports:
       - "8080:80"
