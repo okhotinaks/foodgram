@@ -9,15 +9,15 @@ services:
   db:
     container_name: foodgram-postgres
     image: postgres:13
-    env_file: ../.env
+    env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data
   backend:
     container_name: foodgram-back
     image: okhotinaks/foodgram_backend
-    env_file: ../.env
+    env_file: .env
     volumes:
-      - ../data:/app/data
+      - ./data:/app/data
       - static:/backend_static
       - media:/app/media
     depends_on:
@@ -31,12 +31,12 @@ services:
   nginx:
     container_name: foodgram-proxy
     image: okhotinaks/foodgram_gateway
-    env_file: ../.env
+    env_file: .env
     ports:
       - "8080:80"
     volumes:
       - static:/staticfiles
-      - media:/app/media      
+      - media:/app/media
     depends_on:
       - backend
       - frontend
