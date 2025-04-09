@@ -3,7 +3,7 @@ from django.urls import include, path
 from django.conf.urls.static import static
 from rest_framework import routers
 
-from .viewsets import TagViewSet, IngredientViewSet, UserViewSet, RecipeViewSet
+from .views import TagViewSet, IngredientViewSet, UserViewSet, RecipeViewSet
 
 api_router = routers.DefaultRouter()
 

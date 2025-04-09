@@ -1,10 +1,9 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
+from django.contrib.auth.validators import UnicodeUsernameValidator
 
-from .constants import (EMAIL_MAX_LENGTH, NAME_MAX_LENGTH,
-                        USERNAME_REGEX, USERNAME_ERROR_MESSAGE)
+from .constants import EMAIL_MAX_LENGTH, NAME_MAX_LENGTH
 
 
 class User(AbstractUser):
@@ -21,10 +20,7 @@ class User(AbstractUser):
         max_length=NAME_MAX_LENGTH,
         unique=True,
         verbose_name='Имя пользователя',
-        validators=[RegexValidator(
-            regex=USERNAME_REGEX,
-            message=USERNAME_ERROR_MESSAGE
-        )],
+        validators=[UnicodeUsernameValidator()],
         error_messages={
             'unique': 'Пользователь с таким именем уже существует.'
         },
@@ -38,6 +34,7 @@ class User(AbstractUser):
         verbose_name='Фамилия'
     )
     avatar = models.ImageField(
+
         null=True,
         blank=True,
         upload_to='users/',
@@ -61,13 +58,13 @@ class Subscription(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='followers',
-        verbose_name='Подписчик'
+        related_name='following',
+        verbose_name='Пользователь'
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='following',
+        related_name='followers',
         verbose_name='Автор'
     )
 

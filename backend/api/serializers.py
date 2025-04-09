@@ -4,7 +4,10 @@ from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
-from djoser.serializers import UserSerializer, UserCreateSerializer
+from djoser.serializers import (
+    UserSerializer,
+    UserCreateSerializer as BaseUserCreateSerializer
+)
 
 from recipes.models import Tag, Ingredient, Recipe, RecipeIngredient
 from users.models import Subscription
@@ -26,17 +29,17 @@ class TagSerializer(serializers.ModelSerializer):
     """Сериализатор для модели тега (Tag)."""
     class Meta:
         model = Tag
-        fields = ['id', 'name', 'slug']
+        fields = '__all__'
 
 
 class IngredientSerializer(serializers.ModelSerializer):
     """Сериализатор для модели ингредиента (Ingredient)."""
     class Meta:
         model = Ingredient
-        fields = ['id', 'name', 'measurement_unit']
+        fields = '__all__'
 
 
-class CustomUserCreateSerializer(UserCreateSerializer):
+class UserCreateSerializer(BaseUserCreateSerializer):
     """Сериализатор для регистрации нового пользователя."""
 
     class Meta:
@@ -71,8 +74,7 @@ class CustomUserSerializer(UserSerializer):
         """Подписан ли текущий пользователь на запрашиваемого автора."""
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            return Subscription.objects.filter(
-                user=request.user, author=obj).exists()
+            return request.user.following.filter(author=obj).exists()
         return False
 
     def get_avatar(self, obj):
@@ -215,34 +217,43 @@ class RecipeSerializer(serializers.ModelSerializer):
             'ingredients', 'tags', 'image', 'name', 'text', 'cooking_time'
         ]
 
+    def validate(self, data):
+        """Общая валидация для создания и обновления рецепта."""
+        if self.context['request'].method in ('POST', 'PUT', 'PATCH'):
+            if 'ingredients' not in data:
+                raise serializers.ValidationError({
+                    'ingredients': 'Это поле обязательно.'
+                })
+            if 'tags' not in data:
+                raise serializers.ValidationError({
+                    'tags': 'Это поле обязательно.'
+                })
+        return data
+
     def validate_ingredients(self, ingredients):
         """Проверка ингредиентов на уникальность и количество."""
-        if not ingredients:
-            raise serializers.ValidationError(
-                'Необходимо выбрать хотя бы один ингредиент!'
-            )
-        id_ingredients = []
-        for ingredient in ingredients:
-            if ingredient['amount'] < 1:
-                raise serializers.ValidationError(
-                    'Минимальное количество ингредиента - 1!'
-                )
-            if ingredient['id'] in id_ingredients:
-                raise serializers.ValidationError(
-                    'Ингредиенты не должны повторяться!'
-                )
-            id_ingredients.append(ingredient['id'])
-        return ingredients
+        if ingredients:
+            id_ingredients = []
+            for ingredient in ingredients:
+                if ingredient['amount'] < 1:
+                    raise serializers.ValidationError(
+                        'Минимальное количество ингредиента - 1!'
+                    )
+                if ingredient['id'] in id_ingredients:
+                    raise serializers.ValidationError(
+                        'Ингредиенты не должны повторяться!'
+                    )
+                id_ingredients.append(ingredient['id'])
+            return ingredients
 
     def validate_tags(self, tags):
         """Проверка тегов на уникальность и наличие."""
-        if not tags:
-            raise serializers.ValidationError(
-                'Необходимо выбрать хотя бы один тег!'
-            )
-        if len(tags) != len(set(tags)):
-            raise serializers.ValidationError('Теги не должны повторяться!')
-        return tags
+        if tags:
+            if len(tags) != len(set(tags)):
+                raise serializers.ValidationError(
+                    'Теги не должны повторяться!'
+                )
+            return tags
 
     def add_ingredients(self, recipe, ingredients):
         """Функция добавления ингредиентов в рецепт."""
@@ -266,18 +277,11 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         """Функция для обновления рецепта."""
-        if 'ingredients' not in validated_data:
-            raise serializers.ValidationError(
-                'Поле "ingredients" обязательно для заполнения.'
-            )
-        if 'tags' not in validated_data:
-            raise serializers.ValidationError(
-                'Поле "tags" обязательно для заполнения.'
-            )
         ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+
+        super().update(instance, validated_data)
+
         instance.tags.set(tags)
         instance.ingredients.clear()
         self.add_ingredients(instance, ingredients)
