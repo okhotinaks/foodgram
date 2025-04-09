@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404, redirect
-from django.db.models import Sum, Count
+from django.db.models import Sum
 from django.http import HttpResponse
 from rest_framework import viewsets, views
 from rest_framework.decorators import action
